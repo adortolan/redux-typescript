@@ -3,10 +3,9 @@ import { Routes, Route } from "react-router-dom";
 import "./App.css";
 import { NavBar } from "./app/NavBar";
 import { Posts } from "./features/posts/posts";
-
-export const Home = () => {
-  return <div>Pagina Inicial</div>;
-};
+import { AddPostForm } from "./features/posts/AddPostForm";
+import { SinglePostPage } from "./features/posts/SinglePostPage";
+import { EditPostForm } from "./features/posts/EditPostForm";
 
 function App() {
   return (
@@ -14,8 +13,10 @@ function App() {
       <NavBar />
       <div>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/posts" element={<Posts />} />
+          <Route path="/" element={<Posts />} />
+          <Route path="/addpost" element={<AddPostForm />} />
+          <Route path="/post/:postId" element={<SinglePostPage />} />
+          <Route path="/editpost/:postId" element={<EditPostForm />} />
         </Routes>
       </div>
     </>
