@@ -7,27 +7,21 @@ type Post = {
   content: string;
 };
 
-type PostState = {
-  posts: Post[];
-};
-
-const initialState = {
-  posts: [
-    { id: "1", title: "First Post", content: "Hello!" },
-    { id: "2", title: "Second Post", content: "content posted!" },
-  ],
-} as PostState;
+const initialState: Post[] = [
+  { id: "1", title: "First Post", content: "Hello!" },
+  { id: "2", title: "Second Post", content: "content posted!" },
+];
 
 export const postSlice = createSlice({
   name: "posts",
   initialState,
   reducers: {
     postAdd(state, action) {
-      state.posts.push(action.payload);
+      state.push(action.payload);
     },
     postUpdate(state, action) {
       const { id, title, content } = action.payload;
-      const existPost = state.posts.find((post) => post.id === id);
+      const existPost = state.find((post) => post.id === id);
 
       if (existPost) {
         existPost.title = title;

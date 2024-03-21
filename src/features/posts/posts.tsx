@@ -8,7 +8,7 @@ export const Posts = () => {
   return (
     <section className="posts-list">
       <h2>Posts</h2>
-      {posts.posts.map((post) => (
+      {posts.map((post) => (
         <article className="post-excerpt" key={post.id}>
           <Link to={`/post/${post.id}`}>
             <h3>{post.title}</h3>
