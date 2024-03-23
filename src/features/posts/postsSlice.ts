@@ -1,13 +1,21 @@
 import { createSlice, nanoid, PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../../app/store";
+export interface reactionEmoji {
+  thumbsUp: number;
+  hooray: number;
+  heart: number;
+  rocket: number;
+  eyes: number;
+}
 
-type Post = {
+export interface Post {
   id: string;
   date: string;
   title: string;
   content: string;
   user: string;
-};
+  reactions: reactionEmoji;
+}
 
 const initialState: Post[] = [
   {
@@ -16,6 +24,13 @@ const initialState: Post[] = [
     title: "First Post",
     content: "Hello!",
     user: "01",
+    reactions: {
+      thumbsUp: 0,
+      hooray: 0,
+      heart: 0,
+      rocket: 0,
+      eyes: 0,
+    },
   },
   {
     id: "2",
@@ -23,6 +38,13 @@ const initialState: Post[] = [
     title: "Second Post",
     content: "content posted!",
     user: "02",
+    reactions: {
+      thumbsUp: 0,
+      hooray: 0,
+      heart: 0,
+      rocket: 0,
+      eyes: 0,
+    },
   },
 ];
 
@@ -42,6 +64,13 @@ export const postSlice = createSlice({
             title,
             content,
             user: userId,
+            reactions: {
+              thumbsUp: 0,
+              hooray: 0,
+              heart: 0,
+              rocket: 0,
+              eyes: 0,
+            },
           },
         };
       },
@@ -56,10 +85,22 @@ export const postSlice = createSlice({
         existPost.content = content;
       }
     },
+
+    reactionAdd(state, action) {
+      const {
+        postId,
+        reaction,
+      }: { postId: string; reaction: string | number } = action.payload;
+      const existPost = state.find((post) => post.id === postId);
+      console.log("cliccou");
+      if (existPost) {
+        existPost.reactions[reaction as keyof reactionEmoji]++;
+      }
+    },
   },
 });
 
-export const { postAdd, postUpdate } = postSlice.actions;
+export const { postAdd, postUpdate, reactionAdd } = postSlice.actions;
 
 export const selectPosts = (state: RootState) => state.posts;
 
