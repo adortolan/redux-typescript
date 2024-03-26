@@ -10,15 +10,10 @@ import {
   selectCount,
 } from "./counterSlice";
 
-import { selectPosts } from "../posts/postsSlice";
 import styles from "./Counter.module.css";
 
 export function Counter() {
   const count = useAppSelector(selectCount);
-  const posts = useAppSelector(selectPosts);
-
-  console.log(posts);
-
   const dispatch = useAppDispatch();
   const [incrementAmount, setIncrementAmount] = useState("2");
 
