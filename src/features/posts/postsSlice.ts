@@ -1,5 +1,17 @@
-import { createSlice, nanoid, PayloadAction } from "@reduxjs/toolkit";
+import {
+  createAsyncThunk,
+  createSlice,
+  nanoid,
+  PayloadAction,
+} from "@reduxjs/toolkit";
 import type { RootState } from "../../app/store";
+import { client } from "../../api/client";
+
+export const fetchPosts = createAsyncThunk("posts/fetchPosts", async () => {
+  const response = await client.get("fakeapi/posts");
+  return response.data;
+});
+
 export interface reactionEmoji {
   thumbsUp: number;
   hooray: number;
@@ -17,36 +29,17 @@ export interface Post {
   reactions: reactionEmoji;
 }
 
-const initialState: Post[] = [
-  {
-    id: "1",
-    date: new Date().toISOString(),
-    title: "First Post",
-    content: "Hello!",
-    user: "01",
-    reactions: {
-      thumbsUp: 0,
-      hooray: 0,
-      heart: 0,
-      rocket: 0,
-      eyes: 0,
-    },
-  },
-  {
-    id: "2",
-    date: new Date().toISOString(),
-    title: "Second Post",
-    content: "content posted!",
-    user: "02",
-    reactions: {
-      thumbsUp: 0,
-      hooray: 0,
-      heart: 0,
-      rocket: 0,
-      eyes: 0,
-    },
-  },
-];
+interface InitialState {
+  posts: Post[];
+  status: "idle" | "loading" | "succeeded" | "fail";
+  error: string | undefined;
+}
+
+const initialState = {
+  posts: [],
+  status: "idle",
+  error: "",
+} as InitialState;
 
 export const postSlice = createSlice({
   name: "posts",
@@ -54,7 +47,7 @@ export const postSlice = createSlice({
   reducers: {
     postAdd: {
       reducer(state, action: PayloadAction<Post>) {
-        state.push(action.payload);
+        state.posts.push(action.payload);
       },
       prepare(title, content, userId) {
         return {
@@ -78,7 +71,7 @@ export const postSlice = createSlice({
 
     postUpdate(state, action) {
       const { id, title, content } = action.payload;
-      const existPost = state.find((post) => post.id === id);
+      const existPost = state.posts.find((post) => post.id === id);
 
       if (existPost) {
         existPost.title = title;
@@ -91,17 +84,33 @@ export const postSlice = createSlice({
         postId,
         reaction,
       }: { postId: string; reaction: string | number } = action.payload;
-      const existPost = state.find((post) => post.id === postId);
-      console.log("cliccou");
+      const existPost = state.posts.find((post) => post.id === postId);
       if (existPost) {
         existPost.reactions[reaction as keyof reactionEmoji]++;
       }
     },
   },
+  extraReducers(builder) {
+    builder
+      .addCase(fetchPosts.pending, (state, action) => {
+        state.status = "loading";
+      })
+      .addCase(fetchPosts.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.posts = [];
+        state.posts = state.posts.concat(action.payload);
+      })
+      .addCase(fetchPosts.rejected, (state, action) => {
+        state.status = "fail";
+        state.error = action.error.message;
+      });
+  },
 });
 
 export const { postAdd, postUpdate, reactionAdd } = postSlice.actions;
 
-export const selectPosts = (state: RootState) => state.posts;
+export const selectAllPosts = (state: RootState) => state.posts.posts;
+export const selectPostById = (state: RootState, postID: string | undefined) =>
+  state.posts.posts.filter((post) => post.id === postID);
 
 export default postSlice.reducer;
