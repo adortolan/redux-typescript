@@ -6,11 +6,13 @@ import App from "./App";
 import "./index.css";
 import { worker } from "./api/server";
 import { BrowserRouter } from "react-router-dom";
+import { fetchUsers } from "./features/user/userSlice";
 
 async function start() {
   await worker.start({ onUnhandledRequest: "bypass" });
   const container = document.getElementById("root")!;
   const root = createRoot(container);
+  store.dispatch(fetchUsers());
 
   root.render(
     <React.StrictMode>
