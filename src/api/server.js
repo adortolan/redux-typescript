@@ -8,15 +8,22 @@ import { Server as MockSocketServer } from "mock-socket";
 import { parseISO } from "date-fns";
 
 const NUM_USERS = 3;
-const POSTS_PER_USER = 1;
+const POSTS_PER_USER = 3;
 const RECENT_NOTIFICATIONS_DAYS = 7;
 
+// Add an extra delay to all endpoints, so loading spinners show up.
 const ARTIFICIAL_DELAY_MS = 2000;
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/* RNG setup */
+
+// Set up a seeded random number generator, so that we get
+// a consistent set of users / entries each time the page loads.
+// This can be reset by deleting this localStorage value,
+// or turned off by setting `useSeededRNG` to false.
 let useSeededRNG = true;
 
 if (useSeededRNG) {
@@ -27,7 +34,7 @@ if (useSeededRNG) {
     seedDate = new Date(randomSeedString);
   } else {
     seedDate = new Date();
-    randomSeedString = seedDate.toString();
+    randomSeedString = seedDate.toISOString();
     localStorage.setItem("randomTimestampSeed", randomSeedString);
   }
 
@@ -40,9 +47,10 @@ function getRandomInt(min, max) {
 
 const randomFromArray = (array) => {
   const index = getRandomInt(0, array.length - 1);
-
   return array[index];
 };
+
+/* MSW Data Model Setup */
 
 export const db = factory({
   user: {
@@ -101,6 +109,7 @@ const createPostData = (user) => {
   };
 };
 
+// Create an initial set of users and posts
 for (let i = 0; i < NUM_USERS; i++) {
   const author = db.user.create(createUserData());
 
@@ -110,28 +119,35 @@ for (let i = 0; i < NUM_USERS; i++) {
   }
 }
 
-const serializePost = (post) => ({ ...post, user: post.user.id });
+const serializePost = (post) => ({
+  ...post,
+  user: post.user.id,
+});
+
+/* MSW REST API Handlers */
 
 export const handlers = [
-  http.get("fakeapi/posts", async function () {
+  http.get("/fakeApi/posts", async function () {
     const posts = db.post.getAll().map(serializePost);
     await delay(ARTIFICIAL_DELAY_MS);
     return HttpResponse.json(posts);
   }),
-
-  http.post("/fakeapi/posts", async function ({ request }) {
-    const data = request.json();
+  http.post("/fakeApi/posts", async function ({ request }) {
+    const data = await request.json();
 
     if (data.content === "error") {
       await delay(ARTIFICIAL_DELAY_MS);
 
       return new HttpResponse(
-        new JSON.stringify("Aconteceu um erro salvando este post"),
-        { status: 500 }
+        JSON.stringify("Server error saving this post!"),
+        {
+          status: 500,
+        }
       );
     }
 
     data.date = new Date().toISOString();
+
     const user = db.user.findFirst({ where: { id: { equals: data.user } } });
     data.user = user;
     data.reactions = db.reaction.create();
@@ -140,59 +156,52 @@ export const handlers = [
     await delay(ARTIFICIAL_DELAY_MS);
     return HttpResponse.json(serializePost(post));
   }),
-
-  http.get("/fakeapi/posts/:postId", async function ({ params }) {
+  http.get("/fakeApi/posts/:postId", async function ({ params }) {
     const post = db.post.findFirst({
       where: { id: { equals: params.postId } },
     });
     await delay(ARTIFICIAL_DELAY_MS);
     return HttpResponse.json(serializePost(post));
   }),
-
-  http.patch("/fakeapi/posts/:postId", async function ({ request, params }) {
+  http.patch("/fakeApi/posts/:postId", async ({ request, params }) => {
     const { id, ...data } = await request.json();
-
-    const updatePost = db.post.update(
-      { where: { id: { equals: params.postId } } },
-      data
-    );
-
+    const updatedPost = db.post.update({
+      where: { id: { equals: params.postId } },
+      data,
+    });
     await delay(ARTIFICIAL_DELAY_MS);
-    return HttpResponse.json(serializePost(updatePost));
+    return HttpResponse.json(serializePost(updatedPost));
   }),
 
-  http.get("/fakeapi/posts/:postId/comments", async function ({ params }) {
+  http.get("/fakeApi/posts/:postId/comments", async ({ params }) => {
     const post = db.post.findFirst({
-      where: { id: { equals: params.postIds } },
+      where: { id: { equals: params.postId } },
     });
 
     await delay(ARTIFICIAL_DELAY_MS);
     return HttpResponse.json({ comments: post.comments });
   }),
 
-  http.post(
-    "/fakeapi/posts/:postId/reactions",
-    async function ({ request, params }) {
-      const postId = params.postId;
-      const { reaction } = request.json();
+  http.post("/fakeApi/posts/:postId/reactions", async ({ request, params }) => {
+    const postId = params.postId;
+    const { reaction } = await request.json();
+    const post = db.post.findFirst({
+      where: { id: { equals: postId } },
+    });
 
-      const post = db.post.findFirst({ where: { id: { equals: postId } } });
-
-      const updatePost = db.post.update({
-        where: { id: { equals: postId } },
-        data: {
-          reactions: {
-            ...post.reactions,
-            [reaction]: (post.reactions[reaction] += 1),
-          },
+    const updatedPost = db.post.update({
+      where: { id: { equals: postId } },
+      data: {
+        reactions: {
+          ...post.reactions,
+          [reaction]: (post.reactions[reaction] += 1),
         },
-      });
+      },
+    });
 
-      await delay(ARTIFICIAL_DELAY_MS);
-      return HttpResponse.json(serializePost(updatePost));
-    }
-  ),
-
+    await delay(ARTIFICIAL_DELAY_MS);
+    return HttpResponse.json(serializePost(updatedPost));
+  }),
   http.get("/fakeApi/notifications", async () => {
     const numNotifications = getRandomInt(1, 5);
 
@@ -205,7 +214,6 @@ export const handlers = [
     await delay(ARTIFICIAL_DELAY_MS);
     return HttpResponse.json(notifications);
   }),
-
   http.get("/fakeApi/users", async () => {
     await delay(ARTIFICIAL_DELAY_MS);
     return HttpResponse.json(db.user.getAll());
@@ -213,6 +221,9 @@ export const handlers = [
 ];
 
 export const worker = setupWorker(...handlers);
+// worker.printHandlers() // Optional: nice for debugging to see all available route handlers that will be intercepted
+
+/* Mock Websocket Setup */
 
 const socketServer = new MockSocketServer("ws://localhost");
 
@@ -222,6 +233,8 @@ const sendMessage = (socket, obj) => {
   socket.send(JSON.stringify(obj));
 };
 
+// Allow our UI to fake the server pushing out some notifications over the websocket,
+// as if other users were interacting with the system.
 const sendRandomNotifications = (socket, since) => {
   const numNotifications = getRandomInt(1, 5);
 
@@ -255,6 +268,8 @@ socketServer.on("connection", (socket) => {
     }
   });
 });
+
+/* Random Notifications Generation */
 
 const notificationTemplates = [
   "poked you",
