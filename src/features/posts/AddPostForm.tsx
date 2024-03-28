@@ -1,23 +1,33 @@
 import { useState } from "react";
-import { postAdd } from "./postsSlice";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { addNewPost } from "./postsSlice";
 
 export const AddPostForm = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [userId, setUserId] = useState("");
-  const dispatch = useAppDispatch();
+  const [addRequestStatus, setAddRequestStatus] = useState("idle");
 
+  const dispatch = useAppDispatch();
   const users = useAppSelector((state) => state.users);
 
-  const handleSavePost = () => {
-    if (title && content && userId) {
-      dispatch(postAdd(title, content, userId));
-    }
+  const canSave =
+    [title, content, userId].every(Boolean) && addRequestStatus === "idle";
 
-    setTitle("");
-    setContent("");
-    setUserId("");
+  const onSavePostClicked = async () => {
+    if (canSave) {
+      try {
+        setAddRequestStatus("pending");
+        await dispatch(addNewPost({ title, content, user: userId })).unwrap();
+        setTitle("");
+        setContent("");
+        setUserId("");
+      } catch (err) {
+        console.error("Failed to save the post: ", err);
+      } finally {
+        setAddRequestStatus("idle");
+      }
+    }
   };
 
   return (
@@ -54,7 +64,7 @@ export const AddPostForm = () => {
           value={content}
           onChange={(e) => setContent(e.target.value)}
         />
-        <button type="button" onClick={handleSavePost}>
+        <button type="button" onClick={onSavePostClicked}>
           Save Post
         </button>
       </form>

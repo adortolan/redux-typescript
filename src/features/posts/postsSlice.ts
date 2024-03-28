@@ -12,6 +12,26 @@ export const fetchPosts = createAsyncThunk("posts/fetchPosts", async () => {
   return response.data;
 });
 
+export const addNewPost = createAsyncThunk(
+  "post/addNewPost",
+  async ({
+    title,
+    content,
+    user,
+  }: {
+    title: string;
+    content: string;
+    user: string;
+  }) => {
+    const response = await client.post("fakeapi/posts", {
+      title,
+      content,
+      user,
+    });
+    return response.data;
+  }
+);
+
 export interface reactionEmoji {
   thumbsUp: number;
   hooray: number;
@@ -103,6 +123,9 @@ export const postSlice = createSlice({
       .addCase(fetchPosts.rejected, (state, action) => {
         state.status = "fail";
         state.error = action.error.message;
+      })
+      .addCase(addNewPost.fulfilled, (state, action) => {
+        state.posts.push(action.payload);
       });
   },
 });
