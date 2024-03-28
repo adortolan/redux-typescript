@@ -8,6 +8,7 @@ export const NavBar = () => {
           <div className="navLinks">
             <Link to="/">Posts</Link>
             <Link to="/addpost">Add Post</Link>
+            <Link to="/users">Users</Link>
           </div>
         </div>
       </section>
